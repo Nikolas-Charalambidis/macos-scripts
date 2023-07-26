@@ -8,10 +8,10 @@ FILE=$DIR/$POD.$NOW.log
 
 if [[ -z $2 ]]; then
 	echo "Extracting all log lines from $POD..."
-    kubectl logs $POD > $FILE
+	kubectl logs $POD > $FILE
 else
 	echo "Extracting last $2 log lines from $POD..."
-    kubectl --tail=$2 logs $POD > $FILE
+	kubectl --tail=$2 logs $POD > $FILE
 fi
 
 echo $FILE
