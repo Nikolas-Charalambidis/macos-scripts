@@ -3,7 +3,7 @@
 POD=`kubectl get pods | grep -m 1 $1 | awk '{print $1}'`
 
 NOW=`echo $(date +%Y%m%d_%H%M%S)`
-DIR="/Users/nikolas/Logs/kubectl"
+DIR="~/Logs/kubectl"
 FILE=$DIR/$POD.$NOW.log
 
 if [[ -z $2 ]]; then
