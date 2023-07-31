@@ -5,9 +5,9 @@ help()
 {
    echo ""
    echo "Usage: $0 -p myPodName -l 1000 -s"
-   echo -e "\t-p MANDATORY: String that Kubernetes pod must contain, for example, the pod 'yo-momma-66c4f54568-4fq7k' is found by 'yo-momma'."
-   echo -e "\t-l OPTIONAL:  Number of lines if specified, otherwise the full pod logs are downloaded."
-   echo -e "\t-s OPTIONAL:  Flag whether the downloaded file should NOT be opened after the script execution, otherwise it is opened by default."
+   echo -e "\t-p (pod)    MANDATORY: String that Kubernetes pod must contain, for example, the pod 'yo-momma-66c4f54568-4fq7k' is found by 'yo-momma'."
+   echo -e "\t-l (lines)  OPTIONAL:  Number of lines if specified, otherwise the full pod logs are downloaded."
+   echo -e "\t-s (silent) OPTIONAL:  Flag whether the downloaded file should NOT be opened after the script execution, otherwise it is opened by default."
    echo ""
    echo "Created by Nikolas Charalambidis, see https://github.com/Nikolas-Charalambidis/macos-scripts"
    echo ""
