@@ -3,15 +3,17 @@
 POD=`kubectl get pods | grep -m 1 $1 | awk '{print $1}'`
 
 NOW=`echo $(date +%Y%m%d_%H%M%S)`
-DIR="~/Logs/kubectl"
+DIR=~/Logs/kubectl
 FILE=$DIR/$POD.$NOW.log
 
+touch $FILE
+
 if [[ -z $2 ]]; then
-	echo "Extracting all log lines from $POD..."
-	kubectl logs $POD > $FILE
+	echo "Extracting all log lines from $POD ..."
+    kubectl logs $POD > $FILE
 else
-	echo "Extracting last $2 log lines from $POD..."
-	kubectl --tail=$2 logs $POD > $FILE
+	echo "Extracting last $2 log lines from $POD ..."
+    kubectl --tail=$2 logs $POD > $FILE
 fi
 
 echo $FILE
