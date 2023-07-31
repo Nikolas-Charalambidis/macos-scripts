@@ -18,7 +18,7 @@ help()
 while getopts "p:l:s" opt
 do
    case "$opt" in
-   	  p ) p="$OPTARG" ;;
+      p ) p="$OPTARG" ;;
       l ) l="$OPTARG" ;;
       s ) s='true' ;;
       ? ) help ;; # Call 'help' in case the parameter is non-existent
@@ -49,20 +49,20 @@ echo "File..."
 echo " $FILE"
 
 if [[ -z $l ]]; then
-	echo "Extracting all log lines from $POD using the command..."
-	echo " kubectl logs $POD > $FILE"
+    echo "Extracting all log lines from $POD using the command..."
+    echo " kubectl logs $POD > $FILE"
     kubectl logs $POD > $FILE
 else
-	echo "Extracting last $l log lines from $POD using the command..."
-	echo " kubectl --tail=$l logs $POD > $FILE"
+    echo "Extracting last $l log lines from $POD using the command..."
+    echo " kubectl --tail=$l logs $POD > $FILE"
     kubectl --tail=$l logs $POD > $FILE
 fi
 
 if [[ $s != 'true' ]]; then
-	echo "Finished, opening..."
-	open $FILE
+    echo "Finished, opening..."
+    open $FILE
 else
-	echo "Finished"
+    echo "Finished"
 fi 
 
 exit 0
