@@ -12,23 +12,48 @@
 #===================================================================================================
 #  HISTORY
 #     2023/08/01 : Nikolas CHARALAMBIDIS : Script creation
+#     2023/08/03 : Nikolas CHARALAMBIDIS : Namespaces support and integer Regex fix
 #
 #===================================================================================================
 #  END_OF_HEADER
 #===================================================================================================
 
-COMMAND=${1}
+COMMAND=$1
 
 LOGS_DIR=~/Logs/kubectl
 LOG_LINES_NUMBER=1000
 
 die() { echo "$*" >&2; exit 2; }
-needs_arg() { echo "HERE $OPTARG=$OPT"; if [[ -z "$OPTARG" ]]; then die "No arg for --$OPT option"; fi; }
+require_number() { if ! [[ $OPTARG =~ ^-?[0-9]+$ ]] ; then die "The argument -$OPT must be a number: $OPTARG"; fi; }
 
-requires_number() {
-        regex='^[0-9]+$'
-        if ! [[ $OPTARG =~ $regex ]] ; then
-           die "The argument -$OPT must be a number";
+argument_pod() {
+        echo "1: $1"
+        echo "2: $2"
+        POD=$1
+        if [[ -z $POD ]]; then
+                echo "Missing pod name"
+                echo
+                help $2
+        elif [[ $POD == '-h' || $POD == '-H' || $POD == '--help' ]]; then
+                help $2
+        fi
+}
+
+find_pod() {
+                # PROCESS
+        echo "Looking for the pod matching the '$POD' string..."
+        echo " kubectl get pods `[[ -z "${NAMESPACE}" ]] || echo "-n ${NAMESPACE}"` | grep -m 1 $POD | awk '{print $1}'"
+
+        if [[ -z "${NAMESPACE}" ]]; then
+                KUBERNETES_POD=`kubectl get pods | grep -m 1 $POD | awk '{print $1}'`
+        else
+                KUBERNETES_POD=`kubectl get pods -n $NAMESPACE | grep -m 1 $POD | awk '{print $1}'`
+        fi
+
+        if [[ -z $KUBERNETES_POD ]]; then
+                die "No pod name matches '$POD'"
+        else
+                echo "Matched pod with the name $KUBERNETES_POD" 
         fi
 }
 
@@ -40,21 +65,30 @@ Usage:
 
 Options:
   -f     OPTIONAL FLAG          Specify that the full logs should be fetched. 
-  -l     OPTIONAL NUMBER        A certain number of logs lines should be fetched. The default value is $LOG_LINES_NUMBER.
+  -l     OPTIONAL NUMBER        Specify a given number of logs lines should be fetched. The default value is $LOG_LINES_NUMBER.
+  -n     OPTIONAL STRING        Specify a given namespace, otherwise the currently selected is used by default. 
   -s     OPTIONAL FLAG          Specify that the file with the fetched logs content will not be opened after logs fetching and writing.
 
 Examples:
-  # Fetches the default $LOG_LINES_NUMBER logs lines from a first pod matching 'foo' into a file in the default directory, and opens the log file
-  ku logs foo
 
-  # Fetches the default $LOG_LINES_NUMBER logs lines from a first pod matching 'foo' into a file in the default directory without opening the log file
-  ku logs foo -s
+  Assuming the following output:
+    [user@server ~]$ kubectl get pods
+    NAME                             READY   STATUS    RESTARTS      AGE
+    yo-momma-0                       1/1     Running   0             24m
+    yo-momma-1                       1/1     Running   0             43m
+    yo-daddy                         1/1     Running   0             38m
 
-  # Fetches 250 logs lines from a first pod matching 'foo' into a file in the default directory, and opens the log file
-  ku logs foo -l 250
+  # Fetches the default $LOG_LINES_NUMBER logs lines from 'yo-momma-0' into a file in the default directory, and opens the log file
+  ku logs momma
 
-  # Fetches the full logs from a first pod matching 'foo' into a file in the default directory, and opens the log file
-  ku logs foo -f
+  # Fetches the default $LOG_LINES_NUMBER logs lines from 'yo-momma-0' into a file in the default directory without opening the log file
+  ku logs momma -s
+
+  # Fetches 250 logs lines from 'yo-momma-0' into a file in the default directory, and opens the log file
+  ku logs momma -l 250
+
+  # Fetches the full logs from 'yo-momma-0' into a file in the default directory, and opens the log file
+  ku logs momma -f
 "
         elif [[ $1 == 'spin' ]]; then
                 echo "Not yet implemented."
@@ -87,15 +121,7 @@ if [[ -z $COMMAND || $COMMAND == '-h' || $COMMAND == '-H' || $COMMAND == '--help
 
 elif [[ $COMMAND == 'logs' ]]; then
 
-        # Parse and validate $POD
-        POD=${2}
-        if [[ -z $POD ]]; then
-                echo "Missing pod name"
-                echo
-                help logs
-        elif [[ $POD == '-h' || $POD == '-H' || $POD == '--help' ]]; then
-                help logs
-        fi
+        argument_pod $2 'logs'
 
         # Define variables
         FULL='false'
@@ -105,12 +131,13 @@ elif [[ $COMMAND == 'logs' ]]; then
         OPTIND=3
 
         # Parse arguments
-        while getopts "l:fhs" OPT; do
+        while getopts "l:n:fhs" OPT; do
                 case "$OPT" in
-                        l)      requires_number; LOG_LINES_NUMBER=$OPTARG ;;
-                        f)      FULL='true' ;;
-                        s)      SILENT='true' ;;
                         h)      help ;;
+                        f)      FULL='true' ;;
+                        l)      require_number; LOG_LINES_NUMBER=$OPTARG ;;
+                        n)      NAMESPACE=$OPTARG ;;
+                        s)      SILENT='true' ;;
                         \?)     die "Illegal option -$OPTARG" ;;
                 esac
         done
@@ -118,15 +145,7 @@ elif [[ $COMMAND == 'logs' ]]; then
         # Move 'getopts' on to the next argument.
         shift $((OPTIND-1))  
 
-        # PROCESS
-        echo "Looking for the pod matching the '$POD' string..."
-        echo " kubectl get pods | grep -m 1 $POD | awk '{print $1}'"
-        KUBERNETES_POD=`kubectl get pods | grep -m 1 $POD | awk '{print $1}'`
-        if [[ -z $KUBERNETES_POD ]]; then
-                die "No pod name matches $POD"
-        else
-                echo "Matched pod with the name $KUBERNETES_POD" 
-        fi
+        find_pod
 
         # Create a directory (if it does not exists) and a file
         NOW=`echo $(date +%Y%m%d_%H%M%S)`
@@ -139,13 +158,21 @@ elif [[ $COMMAND == 'logs' ]]; then
         # Fetching logs
         if [[ $FULL == 'true' ]]; then
                 echo "Extracting the full logs from $KUBERNETES_POD using the command..."
-                echo " kubectl logs $KUBERNETES_POD > $LOG_FILE"
+                echo " kubectl logs $KUBERNETES_POD `[[ -z "${NAMESPACE}" ]] || echo "-n ${NAMESPACE}"` > $LOG_FILE"
                 echo "This might take a while..."
-                kubectl logs $KUBERNETES_POD > $LOG_FILE
+                if [[ -z "${NAMESPACE}" ]]; then
+                        kubectl logs $KUBERNETES_POD > $LOG_FILE
+                else
+                        kubectl logs $KUBERNETES_POD -n $NAMESPACE> $LOG_FILE
+                fi
         else
                 echo "Extracting last $LOG_LINES_NUMBER logs lines from $KUBERNETES_POD using the command..."
-                echo " kubectl --tail=$LOG_LINES_NUMBER logs $KUBERNETES_POD > $LOG_FILE"
-                kubectl --tail=$LOG_LINES_NUMBER logs $KUBERNETES_POD > $LOG_FILE
+                echo " kubectl --tail=$LOG_LINES_NUMBER logs $KUBERNETES_POD `[[ -z "${NAMESPACE}" ]] || echo "-n ${NAMESPACE}"` > $LOG_FILE"
+                if [[ -z "${NAMESPACE}" ]]; then
+                        kubectl --tail=$LOG_LINES_NUMBER logs $KUBERNETES_POD > $LOG_FILE
+                    else
+                        kubectl --tail=$LOG_LINES_NUMBER logs $KUBERNETES_POD -n $NAMESPACE> $LOG_FILE
+                fi
         fi
 
         # Silent 
