@@ -7,7 +7,7 @@
 #     version         ku 0.0.1
 #     author          Nikolas CHARALAMBIDIS
 #     license         GNU GPLv3
-#     link            https://github.com/Nikolas-Charalambidis/macos-scripts/ku.sh
+#     link            https://github.com/Nikolas-Charalambidis/macos-scripts
 # 
 #===================================================================================================
 #  HISTORY
