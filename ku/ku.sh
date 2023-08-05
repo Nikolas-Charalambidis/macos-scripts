@@ -109,7 +109,7 @@ Disclaimer:
   Though a basic validation exists, the author(s) take(s) no responsibility for incorrect usage or unwanted outcomes.
 "
         elif [[ $1 == 'spin' ]]; then
-                echo "Deletes a first pod matching the input name which makes Kubernetes to deploy a new one up to the defined scale.
+                echo "Deletes a first pod matching the input name which makes Kubernetes deploy a new one up to the defined scale.
 
 Usage:
   ku spin <pod> [-n NAMESPACE]
@@ -143,7 +143,7 @@ Disclaimer:
 
 Basic Commands:
   logs          Fetches logs from a first pod matching the input name.
-  spin          Deletes a first pod matching the input name which makes Kubernetes to deploy a new one up to the defined scale.
+  spin          Deletes a first pod matching the input name which makes Kubernetes deploy a new one up to the defined scale.
 
 Usage:
   Use \"ku <command> --help\" for more information about a given command.
