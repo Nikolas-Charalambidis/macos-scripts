@@ -11,8 +11,9 @@
 # 
 #===================================================================================================
 #  HISTORY
-#     2023/08/01 : Nikolas CHARALAMBIDIS : Script creation
-#     2023/08/03 : Nikolas CHARALAMBIDIS : Namespaces support and integer Regex fix
+#     2023-08-01 : Nikolas CHARALAMBIDIS : Script creation
+#     2023-08-03 : Nikolas CHARALAMBIDIS : Namespaces support
+#     2023-08-05 : Nikolas CHARALAMBIDIS : ku spin
 #
 #===================================================================================================
 #  END_OF_HEADER
@@ -23,45 +24,53 @@ COMMAND=$1
 LOGS_DIR=~/Logs/kubectl
 LOG_LINES_NUMBER=1000
 
-die() { echo "$*" >&2; exit 2; }
-require_number() { if ! [[ $OPTARG =~ ^-?[0-9]+$ ]] ; then die "The argument -$OPT must be a number: $OPTARG"; fi; }
+info() { echo "$(tput setaf 6)INFO: $(tput sgr0)$*" >&2; }
+error() { echo "$(tput setaf 1)ERROR: $(tput sgr0)$*" >&2; exit 2; }
+warning() { echo "$(tput setaf 3)WARNING: $(tput sgr0)$*" >&2; }
+
+require_input() {  if [[ -z $OPTARG ]]; then error "The argument -$OPT must have an input"; fi; }
+require_number() { if ! [[ $OPTARG =~ ^[0-9]+$ ]] ; then error "The argument -$OPT must be a number: $OPTARG"; fi; }
+
+#===================================================================================================
+#  FUNCTIONS
+#===================================================================================================
 
 argument_pod() {
-        echo "1: $1"
-        echo "2: $2"
-        POD=$1
+        POD=$2
         if [[ -z $POD ]]; then
                 echo "Missing pod name"
                 echo
-                help $2
+                help $1
         elif [[ $POD == '-h' || $POD == '-H' || $POD == '--help' ]]; then
-                help $2
+                help $1
         fi
 }
 
 find_pod() {
-                # PROCESS
-        echo "Looking for the pod matching the '$POD' string..."
-        echo " kubectl get pods `[[ -z "${NAMESPACE}" ]] || echo "-n ${NAMESPACE}"` | grep -m 1 $POD | awk '{print $1}'"
+        # PROCESS
+        COMMAND_NAMESPACE=`[[ -z "${NAMESPACE}" ]] || echo " -n ${NAMESPACE}"`
 
-        if [[ -z "${NAMESPACE}" ]]; then
-                KUBERNETES_POD=`kubectl get pods | grep -m 1 $POD | awk '{print $1}'`
-        else
-                KUBERNETES_POD=`kubectl get pods -n $NAMESPACE | grep -m 1 $POD | awk '{print $1}'`
-        fi
+        echo -n "$(tput setaf 4)==>$(tput sgr0) kubectl get pods$COMMAND_NAMESPACE | grep -m 1 $POD | awk '{print \$1}'"$'\r'; 
+        KUBERNETES_POD=`kubectl get pods$COMMAND_NAMESPACE | grep -m 1 $POD | awk '{print $1}'`
 
         if [[ -z $KUBERNETES_POD ]]; then
-                die "No pod name matches '$POD'"
+                echo "$(tput setaf 1)==>$(tput sgr0) kubectl get pods$COMMAND_NAMESPACE | grep -m 1 $POD | awk '{print \$1}'";
+                error "No pod name matches $(tput bold)$POD$(tput sgr0) in the `[[ -z "${NAMESPACE}" ]] && echo "current" || echo "$(tput bold)${NAMESPACE}$(tput sgr0)"` namespace"
         else
-                echo "Matched pod with the name $KUBERNETES_POD" 
+                echo "$(tput setaf 34)==>$(tput sgr0) kubectl get pods$COMMAND_NAMESPACE | grep -m 1 $POD | awk '{print \$1}'";
+                info "Found $(tput bold)$KUBERNETES_POD$(tput sgr0) in the `[[ -z "${NAMESPACE}" ]] && echo "current" || echo "$(tput bold)${NAMESPACE}$(tput sgr0)"` namespace"
         fi
 }
 
+#===================================================================================================
+#  HELP DEFINITION
+#===================================================================================================
+
 help() {
         if [[ $1 == 'logs' ]]; then
-                echo "Fetches the logs for a pod, writes into a file in the default directory $LOGS_DIR, and opens the file. If not specified, the number of fetched lines is 1000 by default due to possibly huge size of the logs.
+                echo "Fetches logs from a first pod matching the input name, writes into a file in the default directory $LOGS_DIR, and opens the file. If not specified, the number of fetched lines is 1000 by default due to possibly huge size of the logs.
 Usage:
-  ku logs <pod> [-l LINES] [-a] [-s]
+  ku logs <pod> [-f] [-l LINES] [-n NAMESPACE] [-s] [
 
 Options:
   -f     OPTIONAL FLAG          Specify that the full logs should be fetched. 
@@ -89,9 +98,44 @@ Examples:
 
   # Fetches the full logs from 'yo-momma-0' into a file in the default directory, and opens the log file
   ku logs momma -f
+
+  # Fetches the default $LOG_LINES_NUMBER logs lines from 'yo-momma-0' in the 'family' namespace into a file in the default directory, and opens the log file
+  ku logs momma -n family
+
+  # Fetches 250 logs lines from 'yo-momma-0' in the 'family' namespace into a file in the default directory without opening the log file
+  ku logs momma -n family -sl 250
+
+Disclaimer:
+  Though a basic validation exists, the author(s) take(s) no responsibility for incorrect usage or unwanted outcomes.
 "
         elif [[ $1 == 'spin' ]]; then
-                echo "Not yet implemented."
+                echo "Deletes a first pod matching the input name which makes Kubernetes to deploy a new one up to the defined scale.
+
+Usage:
+  ku spin <pod> [-n NAMESPACE]
+
+Options:
+  -n     OPTIONAL STRING        Specify a given namespace, otherwise the currently selected is used by default.
+
+Examples:
+
+  Assuming the following output:
+    [user@server ~]$ kubectl get pods
+    NAME                             READY   STATUS    RESTARTS      AGE
+    yo-momma-0                       1/1     Running   0             24m
+    yo-momma-1                       1/1     Running   0             43m
+    yo-daddy                         1/1     Running   0             38m
+
+  # Deletes a pod 'yo-momma-0'
+  ku spin momma
+
+  # Deletes a pod 'yo-momma-0' in the 'family' namespace
+  ku spin momma -n family
+
+
+Disclaimer:
+  Though a basic validation exists, the author(s) take(s) no responsibility for incorrect usage or unwanted outcomes.
+"
         else 
                 echo "ku is a small utility for common kubectl commands.
 
@@ -103,6 +147,9 @@ Basic Commands:
 
 Usage:
   Use \"ku <command> --help\" for more information about a given command.
+
+Disclaimer:
+  Though a basic validation exists, the author(s) take(s) no responsibility for incorrect usage or unwanted outcomes.
 "
         fi
 
@@ -121,24 +168,25 @@ if [[ -z $COMMAND || $COMMAND == '-h' || $COMMAND == '-H' || $COMMAND == '--help
 
 elif [[ $COMMAND == 'logs' ]]; then
 
-        argument_pod $2 'logs'
+        argument_pod 'logs' $2 
 
         # Define variables
         FULL='false'
         SILENT='false'
 
-        # Skip first two parameters
+        # Skip first two commands and validate no more command is used
         OPTIND=3
+        if ! [[ -z $3 ]] && ! [[ $3 =~ ^-[^-]+$ ]] ; then error "There is not expected any further command after $(tput bold)ku $1 $2 $(tput sgr0)"; fi;
 
         # Parse arguments
         while getopts "l:n:fhs" OPT; do
                 case "$OPT" in
-                        h)      help ;;
+                        h)      help 'logs' ;;
                         f)      FULL='true' ;;
-                        l)      require_number; LOG_LINES_NUMBER=$OPTARG ;;
-                        n)      NAMESPACE=$OPTARG ;;
+                        l)      require_number ; LOG_LINES_NUMBER=$OPTARG ;;
+                        n)      require_input ; NAMESPACE=$OPTARG ;;
                         s)      SILENT='true' ;;
-                        \?)     die "Illegal option -$OPTARG" ;;
+                        \?)     error "Wrong option choice or usage. Try 'ku logs --help'" ;;
                 esac
         done
 
@@ -149,39 +197,29 @@ elif [[ $COMMAND == 'logs' ]]; then
 
         # Create a directory (if it does not exists) and a file
         NOW=`echo $(date +%Y%m%d_%H%M%S)`
-        LOG_FILE=$LOGS_DIR/$KUBERNETES_POD.$NOW.log
+        LOG_NAME=$KUBERNETES_POD.$NOW.log
+        LOG_FILE=$LOGS_DIR/$LOG_NAME
         mkdir -p $LOGS_DIR
         touch $LOG_FILE
-        echo "File..."
-        echo " $LOG_FILE"
+        info "Created a file $(tput bold)$LOG_FILE$(tput sgr0) to write the fetched logs down"
+        
+        COMMAND_TAIL=`[[ $FULL == 'true' ]] || echo " --tail=$LOG_LINES_NUMBER"`
 
         # Fetching logs
-        if [[ $FULL == 'true' ]]; then
-                echo "Extracting the full logs from $KUBERNETES_POD using the command..."
-                echo " kubectl logs $KUBERNETES_POD `[[ -z "${NAMESPACE}" ]] || echo "-n ${NAMESPACE}"` > $LOG_FILE"
-                echo "This might take a while..."
-                if [[ -z "${NAMESPACE}" ]]; then
-                        kubectl logs $KUBERNETES_POD > $LOG_FILE
-                else
-                        kubectl logs $KUBERNETES_POD -n $NAMESPACE> $LOG_FILE
-                fi
+        echo -n "$(tput setaf 4)==>$(tput sgr0) kubectl logs $KUBERNETES_POD$COMMAND_TAIL$COMMAND_NAMESPACE > $LOG_FILE"$'\r';
+        if kubectl logs $KUBERNETES_POD$COMMAND_TAIL$COMMAND_NAMESPACE > $LOG_FILE; then
+            echo "$(tput setaf 34)==>$(tput sgr0) kubectl logs $KUBERNETES_POD$COMMAND_TAIL$COMMAND_NAMESPACE > $LOG_FILE"
         else
-                echo "Extracting last $LOG_LINES_NUMBER logs lines from $KUBERNETES_POD using the command..."
-                echo " kubectl --tail=$LOG_LINES_NUMBER logs $KUBERNETES_POD `[[ -z "${NAMESPACE}" ]] || echo "-n ${NAMESPACE}"` > $LOG_FILE"
-                if [[ -z "${NAMESPACE}" ]]; then
-                        kubectl --tail=$LOG_LINES_NUMBER logs $KUBERNETES_POD > $LOG_FILE
-                    else
-                        kubectl --tail=$LOG_LINES_NUMBER logs $KUBERNETES_POD -n $NAMESPACE> $LOG_FILE
-                fi
+            echo "$(tput setaf 1)==>$(tput sgr0) kubectl logs $KUBERNETES_POD$COMMAND_TAIL$COMMAND_NAMESPACE > $LOG_FILE"
         fi
 
         # Silent 
         if [[ $SILENT == 'true' ]]; then
-                echo "Finished"
+                info "Finished"
         else
-                echo "Finished, opening..."
+                info "Finished. Opening the file..."
                 open $LOG_FILE
-        fi 
+        fi
 
         exit 0
         
@@ -190,11 +228,41 @@ elif [[ $COMMAND == 'logs' ]]; then
 #===================================================================================================
         
 elif [[ $COMMAND == 'spin' ]]; then
-        help spin
+
+        argument_pod 'spin' $2
+
+        # Skip first two commands and validate no more command is used
+        OPTIND=3
+        if ! [[ -z $3 ]] && ! [[ $3 =~ ^-[^-]+$ ]] ; then error "There is not expected any further command after $(tput bold)ku $1 $2 $(tput sgr0)"; fi;
+
+        # Parse arguments
+        while getopts "n:h" OPT; do
+                case "$OPT" in
+                        h)      help 'spin' ;;
+                        n)      require_input ; NAMESPACE=$OPTARG ;;
+                        \?)     error "Wrong option choice or usage. Try 'ku spin --help'" ;;
+                esac
+        done
+
+        # Move 'getopts' on to the next argument.
+        shift $((OPTIND-1))  
+
+        find_pod
+
+        echo -n "$(tput setaf 4)==>$(tput sgr0) kubectl delete $KUBERNETES_POD$COMMAND_NAMESPACE"$'\r';
+        if kubectl delete $KUBERNETES_POD$COMMAND_NAMESPACE; then
+                echo "$(tput setaf 34)==>$(tput sgr0) kubectl delete $KUBERNETES_POD$COMMAND_NAMESPACE"
+        else
+                echo "$(tput setaf 1)==>$(tput sgr0) kubectl delete $KUBERNETES_POD$COMMAND_NAMESPACE"
+        fi
+
+        exit 0
         
 #===================================================================================================
 #  DEFAULT
 #===================================================================================================
 else 
-        die "Illegal command $COMMAND"
+        error "Illegal command $COMMAND"
+
+        exit 0
 fi
