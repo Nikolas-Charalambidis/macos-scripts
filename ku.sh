@@ -7,7 +7,7 @@
 #     version         ku 0.0.1
 #     author          Nikolas CHARALAMBIDIS
 #     license         GNU GPLv3
-#     link            https://github.com/Nikolas-Charalambidis/macos-scripts/ku
+#     link            https://github.com/Nikolas-Charalambidis/macos-scripts/ku.sh
 # 
 #===================================================================================================
 #  HISTORY
@@ -139,7 +139,7 @@ Disclaimer:
         else 
                 echo "ku is a small utility for common kubectl commands.
 
-  Find more at https://github.com/Nikolas-Charalambidis/macos-scripts/ku
+  Find more at https://github.com/Nikolas-Charalambidis/macos-scripts
 
 Basic Commands:
   logs          Fetches logs from a first pod matching the input name.
