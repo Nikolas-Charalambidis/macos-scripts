@@ -249,11 +249,11 @@ elif [[ $COMMAND == 'spin' ]]; then
 
         find_pod
 
-        echo -n "$(tput setaf 4)==>$(tput sgr0) kubectl delete $KUBERNETES_POD$COMMAND_NAMESPACE"$'\r';
-        if kubectl delete $KUBERNETES_POD$COMMAND_NAMESPACE; then
-                echo "$(tput setaf 34)==>$(tput sgr0) kubectl delete $KUBERNETES_POD$COMMAND_NAMESPACE"
+        echo -n "$(tput setaf 4)==>$(tput sgr0) kubectl delete pod $KUBERNETES_POD$COMMAND_NAMESPACE"$'\r';
+        if kubectl delete pod $KUBERNETES_POD$COMMAND_NAMESPACE; then
+                echo "$(tput setaf 34)==>$(tput sgr0) kubectl delete pod $KUBERNETES_POD$COMMAND_NAMESPACE"
         else
-                echo "$(tput setaf 1)==>$(tput sgr0) kubectl delete $KUBERNETES_POD$COMMAND_NAMESPACE"
+                echo "$(tput setaf 1)==>$(tput sgr0) kubectl delete pod $KUBERNETES_POD$COMMAND_NAMESPACE"
         fi
 
         exit 0
