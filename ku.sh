@@ -4,16 +4,15 @@
 #  HEADER
 #===================================================================================================
 #  IMPLEMENTATION
-#     version         ku 0.0.1
+#     version         ku 0.0.2
 #     author          Nikolas CHARALAMBIDIS
 #     license         GNU GPLv3
-#     link            https://github.com/Nikolas-Charalambidis/macos-scripts
+#     link            https://github.com/Nikolas-Charalambidis/macos-scripts/ku
 # 
 #===================================================================================================
 #  HISTORY
-#     2023-08-01 : Nikolas CHARALAMBIDIS : Script creation
-#     2023-08-03 : Nikolas CHARALAMBIDIS : Namespaces support
-#     2023-08-05 : Nikolas CHARALAMBIDIS : ku spin
+#     0.0.1 : 2023/08/01 : Nikolas CHARALAMBIDIS : Script creation
+#     0.0.2 : 2023/11/04 : Nikolas CHARALAMBIDIS : ku pods; ku namespace
 #
 #===================================================================================================
 #  END_OF_HEADER
@@ -24,9 +23,8 @@ COMMAND=$1
 LOGS_DIR=~/Logs/kubectl
 LOG_LINES_NUMBER=1000
 
-info() { echo "$(tput setaf 6)INFO: $(tput sgr0)$*" >&2; }
-error() { echo "$(tput setaf 1)ERROR: $(tput sgr0)$*" >&2; exit 2; }
-warning() { echo "$(tput setaf 3)WARNING: $(tput sgr0)$*" >&2; }
+info()    { echo "$(tput setaf 6)[INFO]:  $(tput sgr0)$*" >&2; }
+error()   { echo "$(tput setaf 1)[ERROR]: $(tput sgr0)$*" >&2; exit 2; }
 
 require_input() {  if [[ -z $OPTARG ]]; then error "The argument -$OPT must have an input"; fi; }
 require_number() { if ! [[ $OPTARG =~ ^[0-9]+$ ]] ; then error "The argument -$OPT must be a number: $OPTARG"; fi; }
@@ -67,16 +65,51 @@ find_pod() {
 #===================================================================================================
 
 help() {
-        if [[ $1 == 'logs' ]]; then
-                echo "Fetches logs from a first pod matching the input name, writes into a file in the default directory $LOGS_DIR, and opens the file. If not specified, the number of fetched lines is 1000 by default due to possibly huge size of the logs.
+
+#===================================================================================================
+#  HELP DEFINITION: FIND
+#===================================================================================================
+
+        if [[ $1 == 'find' ]]; then
+                echo "Finds a first pod matching the input name in the current or specified namespace.
+
 Usage:
-  ku logs <pod> [-f] [-l LINES] [-n NAMESPACE] [-s] [
+  ku find <pod> [-n NAMESPACE]
 
 Options:
-  -f     OPTIONAL FLAG          Specify that the full logs should be fetched. 
+  -n     OPTIONAL STRING        Specify a given namespace, otherwise the currently selected is used by default.
+
+Examples:
+
+  Assuming the following output:
+    [user@server ~]$ kubectl get pods
+    NAME                             READY   STATUS    RESTARTS      AGE
+    yo-momma-0                       1/1     Running   0             24m
+    yo-momma-1                       1/1     Running   0             43m
+    yo-daddy                         1/1     Running   0             38m
+
+  # Finds the name of the pod 'yo-momma-0'
+  ku find momma
+
+  # Finds the name of the pod 'yo-momma-0' in the 'family' namespace
+  ku find momma -n family
+"
+
+#===================================================================================================
+#  HELP DEFINITION: LOGS
+#===================================================================================================
+
+        elif [[ $1 == 'logs' ]]; then
+                echo "Fetches logs from a first pod matching the input name, writes into a file in the default directory $LOGS_DIR, and opens the file. If not specified, the number of fetched lines is 1000 by default due to possibly huge size of the logs.
+Usage:
+  ku logs <pod> [-f] [-l LINES] [-n NAMESPACE] [-s] [-v] [-x]
+
+Options:
   -l     OPTIONAL NUMBER        Specify a given number of logs lines should be fetched. The default value is $LOG_LINES_NUMBER.
   -n     OPTIONAL STRING        Specify a given namespace, otherwise the currently selected is used by default. 
   -s     OPTIONAL FLAG          Specify that the file with the fetched logs content will not be opened after logs fetching and writing.
+  -v     OPTIONAL FLAG          Specify that the full logs should be fetched. 
+  -x     OPTIONAL FLAG          Specify that the logs will be streamed into the console instead.
 
 Examples:
 
@@ -108,14 +141,48 @@ Examples:
 Disclaimer:
   Though a basic validation exists, the author(s) take(s) no responsibility for incorrect usage or unwanted outcomes.
 "
+
+#===================================================================================================
+#  HELP DEFINITION: PODS
+#===================================================================================================
+
+        elif [[ $1 == 'pods' ]]; then
+                echo "Lists all pods in 'wide' output for the current or specified namespace.
+
+Usage:
+  ku pods
+
+Options:
+  -n     OPTIONAL STRING        Specify a given namespace, otherwise the currently selected is used by default.
+
+Examples:
+
+  # List all the pods in the current namespace:
+  ku pods
+
+  # List all the pods in the specified namespace 'family':
+  ku pods -n family
+
+  Sample output:
+    [user@server ~]$ ku pods
+    NAME                            READY   STATUS    RESTARTS   AGE   IP              NODE           NOMINATED NODE   READINESS GATES
+    yo-momma-0                       1/1     Running   0         24m   10.50.100.200   family-node1   <none>           <none>
+    yo-momma-1                       1/1     Running   0         43m   10.50.100.200   family-node1   <none>           <none>
+    yo-daddy                         1/1     Running   0         38m   10.50.100.200   family-node1   <none>           <none>
+"
+
+#===================================================================================================
+#  HELP DEFINITION: SPIN
+#===================================================================================================
+
         elif [[ $1 == 'spin' ]]; then
-                echo "Deletes a first pod matching the input name making Kubernetes deploy a new one up to the defined scale.
+                echo "Deletes a first pod matching the input name which makes Kubernetes deploy a new one up to the defined scale.
 
 Usage:
   ku spin <pod> [-n NAMESPACE]
 
 Options:
-  -n     OPTIONAL STRING        Specify a given namespace, otherwise, the currently selected is used by default.
+  -n     OPTIONAL STRING        Specify a given namespace, otherwise the currently selected is used by default.
 
 Examples:
 
@@ -136,14 +203,22 @@ Examples:
 Disclaimer:
   Though a basic validation exists, the author(s) take(s) no responsibility for incorrect usage or unwanted outcomes.
 "
-        else 
+
+#===================================================================================================
+#  HELP DEFINITION: DEFAULT
+#===================================================================================================
+
+        else  
                 echo "ku is a small utility for common kubectl commands.
 
-  Find more at https://github.com/Nikolas-Charalambidis/macos-scripts
+  Find more utilities at https://github.com/Nikolas-Charalambidis/macos-scripts
 
 Basic Commands:
+  find          Finds a first pod matching the input name.
   logs          Fetches logs from a first pod matching the input name.
-  spin          Deletes a first pod matching the input name making Kubernetes deploy a new one up to the defined scale.
+  namespace     Gets the current namespace
+  pods          Lists all the pods for the current or specified namespace.
+  spin          Deletes a first pod matching the input name which makes Kubernetes deploy a new one up to the defined scale.
 
 Usage:
   Use \"ku <command> --help\" for more information about a given command.
@@ -157,13 +232,43 @@ Disclaimer:
 }
 
 #===================================================================================================
-#  HELP
+#  COMMAND: HELP
 #===================================================================================================
 
 if [[ -z $COMMAND || $COMMAND == '-h' || $COMMAND == '-H' || $COMMAND == '--help' ]]; then
         help a
+
 #===================================================================================================
-#  LOGS
+#  COMMAND: FIND
+#===================================================================================================
+
+elif [[ $COMMAND == 'find' ]]; then
+
+        argument_pod 'find' $2
+
+        # Skip first two commands and validate no more command is used
+        OPTIND=3
+        if ! [[ -z $3 ]] && ! [[ $3 =~ ^-[^-]+$ ]] ; then error "There is not expected any further command after $(tput bold)ku $1 $2 $(tput sgr0)"; fi;
+
+        # Parse arguments
+        while getopts "n:h" OPT; do
+                case "$OPT" in
+                        h)      help 'logs' ;;
+                        n)      require_input ; NAMESPACE=$OPTARG ;;
+                        \?)     error "Wrong option choice or usage. Try 'ku find --help'" ;;
+                esac
+        done
+
+        # Do not use find_pod to avoid logging as the output of the command might be useful for a further pipeline, ex. kubectl logs $(ku find momma)
+
+        COMMAND_NAMESPACE=`[[ -z "${NAMESPACE}" ]] || echo " -n ${NAMESPACE}"`
+        KUBERNETES_POD=`kubectl get pods$COMMAND_NAMESPACE | grep -m 1 $POD | awk '{print $1}'`
+        echo $KUBERNETES_POD
+
+        exit 0
+
+#===================================================================================================
+#  COMMAND: LOGS
 #===================================================================================================
 
 elif [[ $COMMAND == 'logs' ]]; then
@@ -173,20 +278,22 @@ elif [[ $COMMAND == 'logs' ]]; then
         # Define variables
         FULL='false'
         SILENT='false'
+        STREADM='false'
 
         # Skip first two commands and validate no more command is used
         OPTIND=3
         if ! [[ -z $3 ]] && ! [[ $3 =~ ^-[^-]+$ ]] ; then error "There is not expected any further command after $(tput bold)ku $1 $2 $(tput sgr0)"; fi;
 
         # Parse arguments
-        while getopts "l:n:fhs" OPT; do
+        while getopts "l:n:fhsv" OPT; do
                 case "$OPT" in
                         h)      help 'logs' ;;
-                        f)      FULL='true' ;;
+                        v)      FULL='true' ;;
                         l)      require_number ; LOG_LINES_NUMBER=$OPTARG ;;
                         n)      require_input ; NAMESPACE=$OPTARG ;;
                         s)      SILENT='true' ;;
-                        \?)     error "Wrong option choice or usage. Try 'ku logs --help'" ;;
+                        f)      STREAM='true' ;;
+                        \?)     error "Wrong option choice or usage. Try 'ku $COMMAND --help'" ;;
                 esac
         done
 
@@ -195,36 +302,102 @@ elif [[ $COMMAND == 'logs' ]]; then
 
         find_pod
 
-        # Create a directory (if it does not exists) and a file
-        NOW=`echo $(date +%Y%m%d_%H%M%S)`
-        LOG_NAME=$KUBERNETES_POD.$NOW.log
-        LOG_FILE=$LOGS_DIR/$LOG_NAME
-        mkdir -p $LOGS_DIR
-        touch $LOG_FILE
-        info "Created a file $(tput bold)$LOG_FILE$(tput sgr0) to write the fetched logs down"
-        
-        COMMAND_TAIL=`[[ $FULL == 'true' ]] || echo " --tail=$LOG_LINES_NUMBER"`
-
-        # Fetching logs
-        echo -n "$(tput setaf 4)==>$(tput sgr0) kubectl logs $KUBERNETES_POD$COMMAND_TAIL$COMMAND_NAMESPACE > $LOG_FILE"$'\r';
-        if kubectl logs $KUBERNETES_POD$COMMAND_TAIL$COMMAND_NAMESPACE > $LOG_FILE; then
-            echo "$(tput setaf 34)==>$(tput sgr0) kubectl logs $KUBERNETES_POD$COMMAND_TAIL$COMMAND_NAMESPACE > $LOG_FILE"
+        # Stream
+        if [[ $STREAM == 'true' ]]; then
+                echo -n "$(tput setaf 4)==>$(tput sgr0) kubectl logs $KUBERNETES_POD$COMMAND_NAMESPACE -f";
+                kubectl logs $KUBERNETES_POD$COMMAND_NAMESPACE -f
         else
-            echo "$(tput setaf 1)==>$(tput sgr0) kubectl logs $KUBERNETES_POD$COMMAND_TAIL$COMMAND_NAMESPACE > $LOG_FILE"
-        fi
+                # Create a directory (if it does not exists) and a file
+                NOW=`echo $(date +%Y%m%d_%H%M%S)`
+                LOG_NAME=$KUBERNETES_POD.$NOW.log
+                LOG_FILE=$LOGS_DIR/$LOG_NAME
+                mkdir -p $LOGS_DIR
+                touch $LOG_FILE
+                info "Created a file $(tput bold)$LOG_FILE$(tput sgr0) to write the fetched logs down"
+                
+                COMMAND_TAIL=`[[ $FULL == 'true' ]] || echo " --tail=$LOG_LINES_NUMBER"`
 
-        # Silent 
-        if [[ $SILENT == 'true' ]]; then
-                info "Finished"
-        else
-                info "Finished. Opening the file..."
-                open $LOG_FILE
+                # Fetching logs
+                echo -n "$(tput setaf 4)==>$(tput sgr0) kubectl logs $KUBERNETES_POD$COMMAND_TAIL$COMMAND_NAMESPACE > $LOG_FILE"$'\r';
+                if kubectl logs $KUBERNETES_POD$COMMAND_TAIL$COMMAND_NAMESPACE > $LOG_FILE; then
+                    echo "$(tput setaf 34)==>$(tput sgr0) kubectl logs $KUBERNETES_POD$COMMAND_TAIL$COMMAND_NAMESPACE > $LOG_FILE"
+                else
+                    echo "$(tput setaf 1)==>$(tput sgr0) kubectl logs $KUBERNETES_POD$COMMAND_TAIL$COMMAND_NAMESPACE > $LOG_FILE"
+                fi
+
+                # Silent 
+                if [[ $SILENT == 'true' ]]; then
+                        info "Finished"
+                else
+                        info "Finished. Opening the file..."
+                        open $LOG_FILE
+                fi
         fi
 
         exit 0
-        
+
 #===================================================================================================
-#  SPIN
+#  COMMAND: NAMESPACE
+#===================================================================================================
+
+elif [[ $COMMAND == 'namespace' ]]; then
+
+        echo -n "$(tput setaf 4)==>$(tput sgr0) kubectl config view --output 'jsonpath={.contexts[?(@.name=="'$(kubectl config current-context)'")].context.namespace}';echo"$'\r';
+        OUTPUT=$((kubectl config view --output 'jsonpath={.contexts[?(@.name=="'$(kubectl config current-context)'")].context.namespace}';echo) 2>&1)
+
+        if [[ $OUTPUT = * ]]; then
+                echo "$(tput setaf 34)==>$(tput sgr0) kubectl config view --output 'jsonpath={.contexts[?(@.name=="'$(kubectl config current-context)'")].context.namespace}';echo"
+        else
+                echo "$(tput setaf 1)==>$(tput sgr0) kubectl config view --output 'jsonpath={.contexts[?(@.name=="'$(kubectl config current-context)'")].context.namespace}';echo"
+        fi
+        echo "$OUTPUT"
+
+        exit 0
+
+#===================================================================================================
+#  COMMAND: PODS
+#===================================================================================================
+        
+elif [[ $COMMAND == 'pods' ]]; then
+
+        if [[ $2 == '-h' || $2 == '-H' || $2 == '--help' ]]; then
+                help $1
+        fi
+
+
+        # Skip first command and validate no more command is used
+        OPTIND=2
+        # TODO: CHECK
+
+        # Parse arguments
+        while getopts "n:h" OPT; do
+                case "$OPT" in
+                        h)      help 'spin' ;;
+                        n)      require_input ; NAMESPACE=$OPTARG ;;
+                        \?)     error "Wrong option choice or usage. Try 'ku $COMMAND --help'" ;;
+                esac
+        done
+
+        # Move 'getopts' on to the next argument.
+        shift $((OPTIND-1))  
+
+
+        COMMAND_NAMESPACE=`[[ -z "${NAMESPACE}" ]] || echo " -n ${NAMESPACE}"`
+
+        echo -n "$(tput setaf 4)==>$(tput sgr0) kubectl get pods -o wide$COMMAND_NAMESPACE"$'\r';
+        OUTPUT=$((kubectl get pods -o wide$COMMAND_NAMESPACE) 2>&1)
+
+        if [[ $OUTPUT = NAME* ]]; then
+                echo "$(tput setaf 34)==>$(tput sgr0) kubectl get pods -o wide$COMMAND_NAMESPACE"
+        else
+                echo "$(tput setaf 1)==>$(tput sgr0) kubectl get pods -o wide$COMMAND_NAMESPACE"
+        fi
+        echo "$OUTPUT"
+
+        exit 0
+
+#===================================================================================================
+#  COMMAND: SPIN
 #===================================================================================================
         
 elif [[ $COMMAND == 'spin' ]]; then
@@ -240,7 +413,7 @@ elif [[ $COMMAND == 'spin' ]]; then
                 case "$OPT" in
                         h)      help 'spin' ;;
                         n)      require_input ; NAMESPACE=$OPTARG ;;
-                        \?)     error "Wrong option choice or usage. Try 'ku spin --help'" ;;
+                        \?)     error "Wrong option choice or usage. Try 'ku $COMMAND --help'" ;;
                 esac
         done
 
@@ -257,9 +430,9 @@ elif [[ $COMMAND == 'spin' ]]; then
         fi
 
         exit 0
-        
+
 #===================================================================================================
-#  DEFAULT
+#  COMMAND: DEFAULT
 #===================================================================================================
 else 
         error "Illegal command $COMMAND"
