@@ -12,7 +12,7 @@
 #===================================================================================================
 #  HISTORY
 #     0.0.1 : 2023-08-01 : Nikolas CHARALAMBIDIS : Script creation
-#     0.0.2 : 2023-11-04 : Nikolas CHARALAMBIDIS : ku pods; ku namespace
+#     0.1.0 : 2023-11-04 : Nikolas CHARALAMBIDIS : ku pods; ku namespace
 #
 #===================================================================================================
 #  END_OF_HEADER
